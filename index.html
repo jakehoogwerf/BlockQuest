@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlockQuest Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --sky-day-top:#8FD3E8; --sky-day-bot:#CDEAF5;
+    --sky-night-top:#0E1630; --sky-night-bot:#243258;
+    --grass-1:#5B8C3E; --grass-2:#436B2C; --grass-3:#2E4A1F;
+    --dirt:#7A4E2D; --dirt-dark:#5A3A20;
+    --stone:#8A8A82; --stone-dark:#5E5E58;
+    --night:#141A2E; --night-2:#1E2745;
+    --parchment:#EDE6D3; --parchment-2:#E1D7BC; --parchment-3:#D8CBA6;
+    --ink:#241E14; --ink-soft:#544A33;
+    --gold:#E8B923; --emerald:#3FA34D; --diamond:#4FD3C4; --redstone:#C1392B;
+    --border-dark:#20180C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Baloo 2',sans-serif;background:var(--parchment);color:var(--ink);min-height:100vh;}
+  .pixel{font-family:'Press Start 2P',monospace;}
+  button{font-family:inherit;cursor:pointer;border-radius:0;}
+  input,select,textarea{font-family:inherit;border-radius:0;}
+  ::selection{background:var(--gold);}
+  .screen{display:none;min-height:100vh;}
+  .screen.active{display:block;}
+
+  /* ============ Top bar ============ */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 20px;background:var(--night);border-bottom:6px solid var(--border-dark);
+    flex-wrap:wrap;position:relative;
+  }
+  .topbar::after{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:
+      radial-gradient(1.5px 1.5px at 8% 30%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 22% 60%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 40% 20%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 63% 55%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 78% 25%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 92% 60%, #fff, transparent);
+  }
+  .topbar > *{position:relative;z-index:1;}
+  .brand{color:var(--parchment);font-size:13px;display:flex;align-items:center;gap:8px;}
+  .brand .cube-mini{width:16px;height:16px;}
+  .stat-cluster{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .player-chip{color:var(--parchment-2);font-size:12.5px;font-weight:700;}
+  .xp-wrap{display:flex;flex-direction:column;gap:4px;min-width:170px;}
+  .xp-label{color:var(--parchment-2);font-size:10px;}
+  .xp-bar{width:190px;height:14px;background:var(--night-2);border:2px solid var(--border-dark);position:relative;}
+  .xp-bar-fill{height:100%;background:linear-gradient(90deg,var(--emerald),var(--diamond));transition:width .4s ease;}
+  .inv-strip{display:flex;gap:6px;flex-wrap:wrap;}
+  .inv-chip{display:flex;align-items:center;gap:5px;background:var(--night-2);border:2px solid var(--border-dark);padding:3px 7px;color:var(--parchment);font-size:11px;}
+  .logout-btn{border:2px solid var(--border-dark);background:var(--redstone);color:#fff;font-size:11px;font-weight:700;padding:6px 10px;}
+  .logout-btn:hover{filter:brightness(1.1);}
+
+  /* ============ Cube icon (block faces) ============ */
+  .cube{width:18px;height:18px;position:relative;flex:none;}
+  .cube .face-top,.cube .face-side{position:absolute;border:1px solid rgba(0,0,0,0.35);}
+  .cube .face-top{top:0;left:0;right:0;height:60%;filter:brightness(1.18);}
+  .cube .face-side{bottom:0;left:0;right:0;height:45%;filter:brightness(0.72);}
+  .b-dirt .face-top,.b-dirt .face-side{background:#7A4E2D;}
+  .b-stone .face-top,.b-stone .face-side{background:#8A8A82;}
+  .b-coal .face-top,.b-coal .face-side{background:#3c3c38;}
+  .b-iron .face-top,.b-iron .face-side{background:#c9b491;}
+  .b-gold .face-top,.b-gold .face-side{background:var(--gold);}
+  .b-diamond .face-top,.b-diamond .face-side{background:var(--diamond);}
+  .b-emerald .face-top,.b-emerald .face-side{background:var(--emerald);}
+
+  /* ============ Reward toast ============ */
+  .reward-toast{
+    position:fixed;top:16px;right:16px;background:var(--night);color:#fff;
+    border:3px solid var(--gold);padding:12px 16px;font-size:13.5px;
+    display:flex;align-items:center;gap:10px;box-shadow:4px 4px 0 rgba(0,0,0,0.35);
+    z-index:80;opacity:0;transform:translateY(-10px);transition:all .25s ease;pointer-events:none;
+  }
+  .reward-toast.show{opacity:1;transform:translateY(0);}
+
+  /* ============ Hero landscape (hub) ============ */
+  .hero-scene{
+    position:relative;height:180px;overflow:hidden;border-bottom:4px solid var(--border-dark);
+    background:linear-gradient(180deg,var(--sky-day-top) 0%,var(--sky-day-bot) 75%,var(--sky-day-bot) 100%);
+  }
+  .sun{
+    position:absolute;top:22px;right:60px;width:46px;height:46px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff6c9,var(--gold));
+    box-shadow:0 0 0 6px rgba(232,185,35,0.18);
+    animation:glow 4s ease-in-out infinite;
+  }
+  @keyframes glow{0%,100%{box-shadow:0 0 0 6px rgba(232,185,35,0.18);}50%{box-shadow:0 0 0 10px rgba(232,185,35,0.28);}}
+  .cloud{position:absolute;background:#fff;opacity:.9;}
+  .cloud::before,.cloud::after{content:"";position:absolute;background:#fff;}
+  .cloud1{width:52px;height:14px;top:26px;left:-60px;animation:drift 38s linear infinite;}
+  .cloud1::before{width:20px;height:20px;top:-8px;left:6px;}
+  .cloud1::after{width:16px;height:14px;top:-4px;left:28px;}
+  .cloud2{width:40px;height:11px;top:64px;left:-120px;animation:drift 52s linear infinite;animation-delay:-10s;}
+  .cloud2::before{width:16px;height:16px;top:-6px;left:4px;}
+  .cloud2::after{width:14px;height:11px;top:-3px;left:22px;}
+  @keyframes drift{from{transform:translateX(0);}to{transform:translateX(920px);}}
+  .hill{position:absolute;bottom:0;left:0;width:100%;}
+  .hill1{height:60px;background:var(--grass-3);clip-path:polygon(0% 100%,0% 55%,8% 40%,16% 52%,24% 30%,33% 48%,42% 36%,52% 55%,61% 38%,70% 50%,80% 34%,90% 50%,100% 40%,100% 100%);}
+  .hill2{height:42px;background:var(--grass-2);clip-path:polygon(0% 100%,0% 62%,10% 45%,20% 60%,30% 42%,40% 58%,50% 40%,60% 58%,70% 44%,80% 60%,90% 46%,100% 58%,100% 100%);}
+  .hill3{height:26px;background:var(--grass-1);clip-path:polygon(0% 100%,0% 70%,12% 55%,25% 68%,38% 52%,50% 68%,62% 54%,75% 68%,88% 55%,100% 68%,100% 100%);}
+  .tree{position:absolute;bottom:22px;}
+  .tree .trunk{width:6px;height:14px;background:var(--dirt-dark);margin:0 auto;}
+  .tree .leaves{width:22px;height:18px;background:var(--grass-1);border:2px solid var(--grass-3);margin-bottom:-2px;}
+  .tree.t1{left:12%;} .tree.t2{left:58%;bottom:16px;} .tree.t3{left:80%;}
+  .hero-title{
+    position:absolute;left:24px;top:20px;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,0.35);
+    font-size:15px;line-height:1.7;max-width:320px;
+  }
+  .hero-title .sub{font-family:'Baloo 2';font-size:14px;font-weight:700;display:block;margin-top:6px;text-shadow:1px 1px 0 rgba(0,0,0,0.3);}
+
+  /* ============ Hub body ============ */
+  .hub-body{padding:26px 20px 60px;max-width:1080px;margin:0 auto;}
+  .portal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:4px;}
+  .portal{
+    position:relative;border:4px solid var(--border-dark);padding:0;min-height:210px;
+    display:flex;flex-direction:column;color:#fff;overflow:hidden;
+    box-shadow:6px 6px 0 rgba(0,0,0,0.2);transition:transform .12s ease;
+  }
+  .portal:hover{transform:translate(-2px,-2px);}
+  .portal:active{transform:translate(0,0);}
+  .portal-art{height:78px;position:relative;overflow:hidden;border-bottom:4px solid var(--border-dark);}
+  .portal-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;}
+  .portal h3{margin:0;font-size:18px;}
+  .portal p{margin:0;font-size:13.5px;opacity:.92;line-height:1.4;}
+  .portal .tag{align-self:flex-start;font-size:10px;padding:3px 8px;background:rgba(0,0,0,0.35);border:2px solid rgba(0,0,0,0.4);}
+  .portal.p-math .portal-body{background:linear-gradient(160deg,var(--grass-1),var(--grass-3) 85%);}
+  .portal.p-word .portal-body{background:linear-gradient(160deg,#4a3f7a,#2b2450 85%);}
+  .portal.p-trade .portal-body{background:linear-gradient(160deg,var(--dirt),var(--dirt-dark) 85%);}
+  .portal.p-defense .portal-body{background:linear-gradient(160deg,#3a3a3a,var(--night) 85%);}
+  .portal.p-build .portal-body{background:linear-gradient(160deg,#6b5a3a,#3f331e 85%);}
+  .portal-go{align-self:flex-start;border:3px solid var(--border-dark);background:var(--gold);color:var(--ink);font-weight:700;padding:8px 14px;font-size:13.5px;margin-top:auto;}
+  .portal-go:hover{filter:brightness(1.06);}
+
+  /* mini pixel scenes inside portal-art */
+  .art-math{background:linear-gradient(180deg,#3b5e2a,#274018);}
+  .art-word{background:linear-gradient(180deg,#241f42,#141230);}
+  .art-trade{background:linear-gradient(180deg,#8a5a34,#4a2f1a);}
+  .art-defense{background:linear-gradient(180deg,#1c1c1c,#0c0c10);}
+  .art-build{background:linear-gradient(180deg,#8a6a3a,#4a3a20);}
+  .house{position:absolute;bottom:14px;left:38%;width:36px;height:22px;}
+  .house .wall{position:static;width:36px;height:16px;background:#c9b491;border:2px solid var(--border-dark);}
+  .house .roof{width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;border-bottom:12px solid var(--redstone);margin-left:-2px;}
+  .house .door{position:absolute;bottom:0;left:14px;width:8px;height:12px;background:var(--dirt-dark);border:2px solid var(--border-dark);}
+  .pick{position:absolute;width:34px;height:8px;background:#c9b491;border:2px solid var(--border-dark);transform:rotate(-32deg);top:30px;left:30%;}
+  .pick::after{content:"";position:absolute;right:-6px;top:-9px;width:8px;height:20px;background:#8A8A82;border:2px solid var(--border-dark);}
+  .book{position:absolute;width:30px;height:22px;background:#c9b491;border:2px solid var(--border-dark);top:26px;left:38%;}
+  .book::before{content:"";position:absolute;inset:4px;border-left:2px solid var(--border-dark);left:50%;}
+  .gem{position:absolute;width:20px;height:20px;background:var(--emerald);border:2px solid var(--border-dark);top:28px;left:40%;transform:rotate(45deg);}
+  .sword{position:absolute;width:8px;height:34px;background:#c9c9c9;border:2px solid var(--border-dark);top:20px;left:44%;}
+  .sword::after{content:"";position:absolute;bottom:-4px;left:-6px;width:20px;height:6px;background:#8A8A82;border:2px solid var(--border-dark);}
+
+  .teacher-note{margin-top:26px;padding:14px 16px;border:3px dashed #a89b73;font-size:13.5px;color:var(--ink-soft);max-width:640px;}
+
+  /* ============ Auth / login screens ============ */
+  .auth-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:30px 16px;
+    background:linear-gradient(180deg,var(--sky-night-top),var(--sky-night-bot));position:relative;overflow:hidden;
+  }
+  .auth-wrap::before{
+    content:"";position:absolute;inset:0;opacity:.7;pointer-events:none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 10% 20%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 30% 70%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 50% 15%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 65% 55%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 80% 30%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 90% 75%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 20% 85%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 95% 10%, #fff, transparent);
+  }
+  .auth-card{
+    position:relative;z-index:1;width:100%;max-width:640px;background:var(--parchment);
+    border:4px solid var(--border-dark);box-shadow:8px 8px 0 rgba(0,0,0,0.4);padding:26px 24px;
+  }
+  .auth-card h2{margin:0 0 6px;font-size:19px;}
+  .auth-card .lead{font-size:13.5px;color:var(--ink-soft);margin:0 0 18px;}
+  .field-row{margin-bottom:14px;}
+  .field-row label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;}
+  .field-row input,.field-row select,.field-row textarea{
+    width:100%;padding:9px;border:3px solid var(--border-dark);background:#fff;font-size:14.5px;
+  }
+  .field-row textarea{min-height:100px;resize:vertical;}
+  .auth-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px;}
+  .btn-primary{border:3px solid var(--border-dark);background:var(--grass-1);color:#fff;padding:11px 20px;font-size:15px;font-weight:700;}
+  .btn-primary:hover{background:var(--grass-2);}
+  .btn-link{background:none;border:none;color:var(--diamond);font-weight:700;font-size:13px;padding:6px 2px;text-decoration:underline;}
+  .auth-error{color:var(--redstone);font-size:13px;font-weight:700;margin-top:4px;min-height:16px;}
+  .auth-note{font-size:12px;color:var(--ink-soft);margin-top:14px;}
+  .link-row{margin-top:16px;text-align:center;font-size:13px;}
+
+  .name-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:18px;
+  }
+  .name-tile{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    border:3px solid var(--border-dark);background:#fff;padding:10px 6px;font-size:12.5px;font-weight:700;
+    color:var(--ink);text-align:center;line-height:1.25;
+  }
+  .name-tile:hover{background:var(--parchment-2);}
+  .name-tile.selected{background:var(--gold);}
+  .initials-badge{
+    width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-family:'Press Start 2P';font-size:12px;border:2px solid var(--border-dark);
+  }
+
+  /* ============ Generic game chrome ============ */
+  .game-wrap{max-width:760px;margin:0 auto;padding:26px 20px 60px;}
+  .back-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .back-btn{border:3px solid var(--border-dark);background:var(--stone);color:#fff;padding:7px 12px;font-size:13px;font-weight:700;}
+  .back-btn:hover{background:var(--stone-dark);}
+  .game-title{font-size:20px;margin:0;color:var(--night);}
+  .config-card{border:4px solid var(--border-dark);background:#fff;padding:20px;box-shadow:6px 6px 0 rgba(0,0,0,0.12);}
+  .config-row{margin-bottom:16px;}
+  .config-row label{display:block;font-size:13.5px;font-weight:700;margin-bottom:6px;}
+  .config-row select{width:100%;padding:9px;border:3px solid var(--border-dark);font-family:inherit;font-size:14.5px;background:var(--parchment);}
+  .hint{font-size:12px;color:#7a6f52;margin-top:4px;}
+  .stage{border:4px solid var(--border-dark);background:#fff;padding:24px 20px;min-height:280px;position:relative;box-shadow:6px 6px 0 rgba(0,0,0,0.12);}
+  .question-box{text-align:center;margin-bottom:22px;}
+  .question-box .qlabel{font-size:12px;color:#8a7f60;margin-bottom:6px;}
+  .question-box .qtext{font-size:30px;font-weight:800;color:var(--night);}
+  .streak-note{text-align:center;font-size:13px;color:var(--emerald);font-weight:700;min-height:18px;margin-bottom:6px;}
+  .options-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:460px;margin:0 auto;}
+  .opt-block{border:4px solid var(--border-dark);background:var(--stone);color:#fff;font-size:20px;font-weight:800;padding:20px 10px;text-align:center;position:relative;transition:transform .1s;}
+  .opt-block:hover{transform:scale(1.03);}
+  .opt-block.correct-flash{background:var(--emerald)!important;}
+  .opt-block.wrong-flash{background:var(--redstone)!important;animation:shake .3s;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+
+  .word-clue{text-align:center;font-size:16px;margin-bottom:6px;color:var(--ink-soft);}
+  .letter-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:20px 0;}
+  .letter-block{width:42px;height:48px;border:3px solid var(--border-dark);background:var(--dirt);color:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .letter-block.used{opacity:.25;}
+  .answer-row{display:flex;gap:8px;justify-content:center;margin-bottom:18px;min-height:52px;}
+  .answer-slot{width:42px;height:48px;border:3px dashed #a89b73;background:var(--parchment);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--night);}
+  .word-actions{display:flex;gap:10px;justify-content:center;}
+  .btn-secondary{border:3px solid var(--border-dark);background:var(--parchment-2);color:var(--ink);padding:8px 14px;font-size:13px;font-weight:700;}
+
+  .defense-track{position:relative;height:90px;border:3px solid var(--border-dark);background:linear-gradient(180deg,#2b2f4a,#141a2e);margin-bottom:20px;overflow:hidden;}
+  .wall{position:absolute;left:0;bottom:0;top:0;width:0%;background:repeating-linear-gradient(0deg,var(--stone) 0 10px,var(--stone-dark) 10px 12px);border-right:3px solid var(--border-dark);transition:width .3s ease;}
+  .mob{position:absolute;bottom:10px;width:30px;height:30px;background:var(--redstone);border:2px solid var(--border-dark);right:20px;transition:right 6s linear;}
+  .hearts{display:flex;gap:4px;justify-content:center;margin-bottom:10px;}
+  .heart{font-size:20px;color:var(--redstone);}
+  .heart.lost{color:#ccc;}
+  .progress-label{text-align:center;font-size:12px;color:#8a7f60;margin-bottom:14px;}
+  .summary-card{text-align:center;padding:20px;}
+  .summary-card h3{margin-top:0;font-size:20px;}
+  .summary-blocks{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 0;}
+  .summary-blocks .chip{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;}
+  .summary-blocks .cube{width:30px;height:30px;}
+  .summary-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+
+  /* ============ Build Yard ============ */
+  .palette{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .palette-chip{
+    display:flex;align-items:center;gap:6px;border:3px solid var(--border-dark);background:var(--parchment-2);
+    padding:6px 10px;font-size:13px;font-weight:700;color:var(--ink);
+  }
+  .palette-chip.selected{background:var(--gold);}
+  .palette-chip:disabled{opacity:.35;cursor:not-allowed;}
+  .build-hint{font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;}
+  .build-grid{
+    display:grid;grid-template-columns:repeat(10,1fr);gap:3px;max-width:520px;margin:0 auto 18px;
+    background:linear-gradient(180deg,#bfe3f0,#dff1f7);border:4px solid var(--border-dark);padding:8px;
+  }
+  .build-cell{
+    aspect-ratio:1;border:1px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.35);padding:0;
+  }
+  .build-cell.filled{border:1px solid rgba(0,0,0,0.35);}
+  .b-dirt.filled{background:linear-gradient(160deg,#8f5a34,#6b3f21);}
+  .b-stone.filled{background:linear-gradient(160deg,#a3a39a,#79796f);}
+  .b-coal.filled{background:linear-gradient(160deg,#5c5c58,#232320);}
+  .b-iron.filled{background:linear-gradient(160deg,#e4d3b8,#b6a689);}
+  .b-gold.filled{background:linear-gradient(160deg,#ffe27a,var(--gold));}
+  .b-diamond.filled{background:linear-gradient(160deg,#b9f7ef,var(--diamond));}
+  .b-emerald.filled{background:linear-gradient(160deg,#7be08b,var(--emerald));}
+  .build-actions{display:flex;justify-content:center;gap:10px;}
+
+  @media(max-width:520px){
+    .options-grid{grid-template-columns:1fr;}
+    .hero-title{font-size:13px;max-width:220px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div class="screen active" id="screen-login">
+  <div class="auth-wrap">
+    <div class="auth-card" id="loginCardWrap">
+      <h2 class="pixel" style="font-size:15px;">BLOCKQUEST</h2>
+      <p class="lead" id="loginLead">Tap your name to get started.</p>
+      <div id="loginNotSetUp" style="display:none;">
+        <p class="auth-error" style="color:var(--ink-soft);" id="loginNotSetUpText">This class hasn't been set up yet.</p>
+        <div class="link-row"><button class="btn-link" onclick="showScreen('screen-teacher-setup')">Go to teacher setup</button></div>
+      </div>
+      <div id="loginStep2" style="display:none;">
+        <div class="name-grid" id="nameGrid"></div>
+        <div id="passwordArea" style="display:none;">
+          <div class="field-row">
+            <label for="passwordInput" id="passwordLabel">Password</label>
+            <input id="passwordInput" type="password" autocomplete="off">
+          </div>
+          <div class="auth-actions">
+            <button class="btn-primary" id="authActionBtn" onclick="submitAuth()">Log in</button>
+            <button class="btn-link" onclick="deselectStudent()">Not you?</button>
+          </div>
+          <div class="auth-error" id="authError"></div>
+        </div>
+      </div>
+      <div class="link-row"><button class="btn-link" onclick="showScreen('screen-teacher-setup')">Teacher setup</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TEACHER SETUP ===================== -->
+<div class="screen" id="screen-teacher-setup">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2 class="pixel" style="font-size:14px;">TEACHER SETUP</h2>
+      <p class="lead">This is pre-filled with your class. Just check the names and click Save class &mdash; you only need to do this once.</p>
+      <div class="field-row">
+        <label for="newClassName">Class name (optional)</label>
+        <input id="newClassName" placeholder="e.g. Year 3/4 Room 12">
+      </div>
+      <div class="field-row">
+        <label for="rosterInput">Student names, one per line</label>
+        <textarea id="rosterInput" style="min-height:220px;"></textarea>
+      </div>
+      <div class="auth-actions">
+        <button class="btn-primary" onclick="saveRoster()">Save class</button>
+        <button class="btn-link" onclick="showScreen('screen-login')">Back to login</button>
+      </div>
+      <div class="auth-error" id="rosterError"></div>
+      <div class="auth-note" id="rosterSuccess"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL (topbar + all game screens) ===================== -->
+<div id="appShell" style="display:none;">
+  <div class="topbar">
+    <div class="brand pixel">
+      <span class="cube cube-mini b-diamond"><span class="face-top"></span><span class="face-side"></span></span>
+      BLOCKQUEST
+    </div>
+    <div class="stat-cluster">
+      <span class="player-chip" id="playerName">—</span>
+      <div class="xp-wrap">
+        <div class="xp-label">LEVEL <span id="levelNum">1</span> — <span id="xpNum">0</span> XP</div>
+        <div class="xp-bar"><div class="xp-bar-fill" id="xpBarFill" style="width:0%"></div></div>
+      </div>
+      <div class="inv-strip" id="invStrip"></div>
+      <button class="logout-btn" onclick="logout()">Log out</button>
+    </div>
+  </div>
+
+  <div class="reward-toast" id="rewardToast"></div>
+
+  <!-- HUB -->
+  <div class="screen active" id="screen-hub">
+    <div class="hero-scene">
+      <div class="sun"></div>
+      <div class="cloud cloud1"></div>
+      <div class="cloud cloud2"></div>
+      <div class="tree t1"><div class="leaves"></div><div class="trunk"></div></div>
+      <div class="tree t2"><div class="leaves"></div><div class="trunk"></div></div>
+      <div class="tree t3"><div class="leaves"></div><div class="trunk"></div></div>
+      <div class="hill hill1"></div>
+      <div class="hill hill2"></div>
+      <div class="hill hill3"></div>
+      <div class="hero-title pixel">WELCOME BACK<span class="sub" id="heroWelcome">Pick a portal below.</span></div>
+    </div>
+    <div class="hub-body">
+      <div class="portal-grid">
+        <div class="portal p-math">
+          <div class="portal-art art-math"><div class="pick"></div></div>
+          <div class="portal-body">
+            <span class="tag">MATHS</span>
+            <h3>MathCraft Mines</h3>
+            <p>Solve number problems to swing your pickaxe and mine blocks.</p>
+            <button class="portal-go" onclick="showScreen('screen-math-config')">Start mining</button>
+          </div>
+        </div>
+        <div class="portal p-word">
+          <div class="portal-art art-word"><div class="book"></div></div>
+          <div class="portal-body">
+            <span class="tag">SPELLING</span>
+            <h3>Word Miner</h3>
+            <p>Rebuild scrambled spelling words letter block by letter block.</p>
+            <button class="portal-go" onclick="startWord()">Enter cave</button>
+          </div>
+        </div>
+        <div class="portal p-trade">
+          <div class="portal-art art-trade"><div class="gem"></div></div>
+          <div class="portal-body">
+            <span class="tag">GENERAL KNOWLEDGE</span>
+            <h3>Villager Trading Post</h3>
+            <p>Trade correct answers for emeralds with the village quizmaster.</p>
+            <button class="portal-go" onclick="startTrivia()">Visit village</button>
+          </div>
+        </div>
+        <div class="portal p-defense">
+          <div class="portal-art art-defense"><div class="sword"></div></div>
+          <div class="portal-body">
+            <span class="tag">QUICK FACTS</span>
+            <h3>Mob Defense</h3>
+            <p>Answer fast to build your wall before the mobs get too close.</p>
+            <button class="portal-go" onclick="startDefense()">Defend base</button>
+          </div>
+        </div>
+        <div class="portal p-build">
+          <div class="portal-art art-build"><div class="house"><div class="roof"></div><div class="wall"><div class="door"></div></div></div></div>
+          <div class="portal-body">
+            <span class="tag">BUILD</span>
+            <h3>Build Yard</h3>
+            <p>Spend the blocks you've mined to build something of your own.</p>
+            <button class="portal-go" onclick="startBuild()">Open build yard</button>
+          </div>
+        </div>
+      </div>
+      <div class="teacher-note"><strong>Tip:</strong> your progress is saved to your account, so you can log out and pick up right where you left off next lesson.</div>
+    </div>
+  </div>
+
+  <!-- MATH CONFIG -->
+  <div class="screen" id="screen-math-config">
+    <div class="game-wrap">
+      <div class="back-row"><button class="back-btn" onclick="goHub()">&laquo; Back</button><h2 class="game-title">MathCraft Mines — setup</h2></div>
+      <div class="config-card">
+        <div class="config-row">
+          <label for="mathOp">Operation</label>
+          <select id="mathOp">
+            <option value="add">Addition</option>
+            <option value="sub">Subtraction</option>
+            <option value="mul" selected>Times tables</option>
+            <option value="div">Division</option>
+          </select>
+        </div>
+        <div class="config-row">
+          <label for="mathRange">Number range</label>
+          <select id="mathRange">
+            <option value="10">Up to 10</option>
+            <option value="12" selected>Times tables 2–12</option>
+            <option value="20">Up to 20</option>
+            <option value="100">Up to 100</option>
+          </select>
+          <div class="hint">"Times tables 2–12" gives clean multiplication/division facts; the others give mixed number ranges.</div>
+        </div>
+        <button class="btn-primary" onclick="startMath()">Start mining</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATH GAME -->
+  <div class="screen" id="screen-math">
+    <div class="game-wrap">
+      <div class="back-row"><button class="back-btn" onclick="goHub()">&laquo; Back</button><h2 class="game-title">MathCraft Mines</h2></div>
+      <div class="stage">
+        <div class="progress-label" id="mathProgress">Question 1</div>
+        <div class="question-box"><div class="qlabel">SOLVE TO MINE</div><div class="qtext" id="mathQuestion">?</div></div>
+        <div class="streak-note" id="mathStreak"></div>
+        <div class="options-grid" id="mathOptions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORD MINER -->
+  <div class="screen" id="screen-word">
+    <div class="game-wrap">
+      <div class="back-row"><button class="back-btn" onclick="goHub()">&laquo; Back</button><h2 class="game-title">Word Miner</h2></div>
+      <div class="stage">
+        <div class="progress-label" id="wordProgress">Word 1</div>
+        <div class="word-clue" id="wordClue">Clue</div>
+        <div class="answer-row" id="answerRow"></div>
+        <div class="letter-row" id="letterRow"></div>
+        <div class="word-actions">
+          <button class="btn-secondary" onclick="clearWordAttempt()">Clear</button>
+          <button class="btn-secondary" onclick="skipWord()">Skip word</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRIVIA -->
+  <div class="screen" id="screen-trivia">
+    <div class="game-wrap">
+      <div class="back-row"><button class="back-btn" onclick="goHub()">&laquo; Back</button><h2 class="game-title">Villager Trading Post</h2></div>
+      <div class="stage">
+        <div class="progress-label" id="triviaProgress">Question 1</div>
+        <div class="question-box"><div class="qlabel">THE VILLAGER ASKS</div><div class="qtext" id="triviaQuestion" style="font-size:22px;">?</div></div>
+        <div class="streak-note" id="triviaStreak"></div>
+        <div class="options-grid" id="triviaOptions" style="grid-template-columns:1fr;max-width:520px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOB DEFENSE -->
+  <div class="screen" id="screen-defense">
+    <div class="game-wrap">
+      <div class="back-row"><button class="back-btn" onclick="goHub()">&laquo; Back</button><h2 class="game-title">Mob Defense</h2></div>
+      <div class="stage">
+        <div class="hearts" id="defenseHearts"></div>
+        <div class="defense-track"><div class="wall" id="defenseWall"></div><div class="mob" id="defenseMob" style="display:none;"></div></div>
+        <div class="progress-label" id="defenseProgress">Wave question 1</div>
+        <div class="question-box"><div class="qlabel">ANSWER BEFORE IT REACHES YOUR WALL</div><div class="qtext" id="defenseQuestion">?</div></div>
+        <div class="options-grid" id="defenseOptions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUILD YARD -->
+  <div class="screen" id="screen-build">
+    <div class="game-wrap">
+      <div class="back-row"><button class="back-btn" onclick="goHub()">&laquo; Back</button><h2 class="game-title">Build Yard</h2></div>
+      <div class="stage">
+        <div class="build-hint">Pick a block, then click a tile to place it. Click a placed block to take it back.</div>
+        <div class="palette" id="buildPalette"></div>
+        <div class="build-grid" id="buildGrid"></div>
+        <div class="build-actions">
+          <button class="btn-secondary" onclick="clearBuild()">Return all blocks</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="screen" id="screen-summary">
+    <div class="game-wrap">
+      <div class="stage summary-card">
+        <h3 class="pixel" style="font-size:16px;" id="summaryTitle">Round complete!</h3>
+        <p id="summaryText"></p>
+        <div class="summary-blocks" id="summaryBlocks"></div>
+        <div class="summary-actions">
+          <button class="btn-primary" onclick="goHub()">Back to portals</button>
+          <button class="btn-secondary" onclick="startBuild()">Go build something</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= Supabase setup ================= */
+/* Replace these two values with the ones from your Supabase project (Project Settings -> API). */
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+<script>
+/* ================= Supabase setup ================= */
+/* Replace these two values with the ones from your Supabase project (Project Settings -> API). */
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* This site is set up for a single class, so students never see a class code. */
+const DEFAULT_CLASS_CODE = 'MY-CLASS';
+const DEFAULT_ROSTER = [
+  'Yamen Aleassa','Sophia Brodziak','Seth Crawford','Zayn Cristodero','Ryan Datta',
+  'Ariarne David','Ula Day','Enzo Lewis','Ziggy Madden','Abhirami Mahadev',
+  'Astrid McGauchie','Tanner Mears','Oscar Samson','Remy Scott','Luna-Sage Tingley',
+  'Iris Trowbridge','Cynthia Valentin','Archer Watkins','Johnathan Xing','Bobbi-Lee Spencer'
+];
+const BADGE_COLORS = ['b-dirt','b-stone','b-coal','b-iron','b-gold','b-diamond','b-emerald'];
+
+/* ================= Auth flow state ================= */
+let authState = { classId:null, students:[], selectedStudent:null, mode:null }; // mode: 'signup' | 'login'
+let currentUser = null; // supabase auth user
+
+function syntheticEmail(studentId){ return `${studentId}@blockquest.local`; }
+
+function initials(name){
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0][0] || '';
+  const last = parts[parts.length-1][0] || '';
+  return (first+last).toUpperCase();
+}
+
+async function loadClassAndNames(){
+  if(SUPABASE_URL.includes('YOUR_SUPABASE') || SUPABASE_ANON_KEY.includes('YOUR_SUPABASE')){
+    document.getElementById('loginNotSetUpText').textContent = "This site isn't connected to Supabase yet — the SUPABASE_URL and SUPABASE_ANON_KEY placeholders near the top of the script still need to be replaced with your project's real values.";
+    document.getElementById('loginNotSetUp').style.display='block';
+    document.getElementById('loginStep2').style.display='none';
+    document.getElementById('loginLead').style.display='none';
+    return;
+  }
+  let classes;
+  try{
+    const res = await sb.from('classes').select('id,code').eq('code', DEFAULT_CLASS_CODE).limit(1);
+    classes = res.data;
+  } catch(e){
+    document.getElementById('loginNotSetUpText').textContent = "Couldn't reach Supabase. Double-check your SUPABASE_URL and SUPABASE_ANON_KEY are correct.";
+    document.getElementById('loginNotSetUp').style.display='block';
+    document.getElementById('loginStep2').style.display='none';
+    document.getElementById('loginLead').style.display='none';
+    return;
+  }
+  if(!classes || classes.length===0){
+    document.getElementById('loginNotSetUpText').textContent = "This class hasn't been set up yet.";
+    document.getElementById('loginNotSetUp').style.display='block';
+    document.getElementById('loginStep2').style.display='none';
+    document.getElementById('loginLead').style.display='none';
+    return;
+  }
+  authState.classId = classes[0].id;
+  const { data: students } = await sb.from('students').select('id,display_name,auth_user_id').eq('class_id', authState.classId).order('display_name');
+  authState.students = students || [];
+  renderNameGrid();
+  document.getElementById('loginStep2').style.display='block';
+}
+
+function renderNameGrid(){
+  const grid = document.getElementById('nameGrid');
+  grid.innerHTML = '';
+  authState.students.forEach((s,i)=>{
+    const tile = document.createElement('button');
+    tile.className = 'name-tile';
+    tile.innerHTML = `<span class="initials-badge ${BADGE_COLORS[i%BADGE_COLORS.length]}">${initials(s.display_name)}</span>${s.display_name}`;
+    tile.onclick = ()=>selectStudent(s, tile);
+    grid.appendChild(tile);
+  });
+}
+
+function selectStudent(student, tileEl){
+  document.querySelectorAll('.name-tile').forEach(t=>t.classList.remove('selected'));
+  tileEl.classList.add('selected');
+  authState.selectedStudent = student;
+  const isNew = !student.auth_user_id;
+  authState.mode = isNew ? 'signup' : 'login';
+  document.getElementById('passwordLabel').textContent = isNew ? 'Create a password (first time)' : 'Password';
+  document.getElementById('authActionBtn').textContent = isNew ? 'Create account' : 'Log in';
+  document.getElementById('authError').textContent = '';
+  document.getElementById('passwordInput').value = '';
+  document.getElementById('passwordArea').style.display = 'block';
+}
+
+function deselectStudent(){
+  document.querySelectorAll('.name-tile').forEach(t=>t.classList.remove('selected'));
+  authState.selectedStudent = null;
+  document.getElementById('passwordArea').style.display = 'none';
+}
+
+async function submitAuth(){
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  const student = authState.selectedStudent;
+  const password = document.getElementById('passwordInput').value;
+  if(!password || password.length < 6){ errEl.textContent = 'Password needs at least 6 characters.'; return; }
+  const email = syntheticEmail(student.id);
+
+  if(authState.mode === 'signup'){
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if(error){ errEl.textContent = error.message; return; }
+    if(!data.user){ errEl.textContent = 'Could not create account. Ask your teacher to check email confirmation is off.'; return; }
+    await sb.from('students').update({ auth_user_id: data.user.id }).eq('id', student.id);
+    currentUser = data.user;
+    await sb.from('progress').insert({ user_id: currentUser.id, xp:0, level:1, inventory:{}, build:[] });
+    await enterApp(student.display_name, { xp:0, level:1, inventory:{}, build:[] });
+  } else {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ errEl.textContent = 'Incorrect password.'; return; }
+    currentUser = data.user;
+    const { data: prog } = await sb.from('progress').select('*').eq('user_id', currentUser.id).maybeSingle();
+    const p = prog || { xp:0, level:1, inventory:{}, build:[] };
+    if(!prog) await sb.from('progress').insert({ user_id: currentUser.id, xp:0, level:1, inventory:{}, build:[] });
+    await enterApp(student.display_name, p);
+  }
+}
+
+async function saveRoster(){
+  const name = document.getElementById('newClassName').value.trim();
+  const namesRaw = document.getElementById('rosterInput').value;
+  const errEl = document.getElementById('rosterError');
+  const okEl = document.getElementById('rosterSuccess');
+  errEl.textContent=''; okEl.textContent='';
+  const names = namesRaw.split('\n').map(n=>n.trim()).filter(Boolean);
+  if(names.length===0){ errEl.textContent='Add at least one student name.'; return; }
+  const { data: cls, error: cErr } = await sb.from('classes').insert({ code: DEFAULT_CLASS_CODE, name }).select().single();
+  if(cErr){ errEl.textContent = cErr.message.includes('duplicate') ? 'This class is already set up — go back to login.' : cErr.message; return; }
+  const rows = names.map(n=>({ class_id: cls.id, display_name: n }));
+  const { error: sErr } = await sb.from('students').insert(rows);
+  if(sErr){ errEl.textContent = sErr.message; return; }
+  okEl.textContent = `Saved ${names.length} students. You can log in now.`;
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  currentUser = null;
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('passwordInput').value='';
+  deselectStudent();
+  showScreen('screen-login');
+}
+
+async function enterApp(name, progress){
+  state.xp = progress.xp||0;
+  state.level = progress.level||1;
+  state.inventory = progress.inventory||{};
+  const loadedBuild = Array.isArray(progress.build) ? progress.build : [];
+  buildState = new Array(BUILD_CELLS).fill(null).map((_,i)=> loadedBuild[i] || null);
+  document.getElementById('playerName').textContent = name;
+  document.getElementById('heroWelcome').textContent = `${name}, pick a portal below.`;
+  document.getElementById('appShell').style.display='block';
+  renderStats();
+  showScreen('screen-hub');
+}
+
+/* ================= Shared player state + persistence ================= */
+const state = { xp:0, level:1, inventory:{} };
+const BLOCK_META = {
+  dirt:{cls:'b-dirt',label:'Dirt'}, stone:{cls:'b-stone',label:'Stone'}, coal:{cls:'b-coal',label:'Coal'},
+  iron:{cls:'b-iron',label:'Iron'}, gold:{cls:'b-gold',label:'Gold'}, diamond:{cls:'b-diamond',label:'Diamond'},
+  emerald:{cls:'b-emerald',label:'Emerald'}
+};
+function cubeHTML(key){ return `<span class="cube ${BLOCK_META[key].cls}"><span class="face-top"></span><span class="face-side"></span></span>`; }
+
+function xpForLevel(l){ return (l-1)*100; }
+
+const BUILD_COLS = 10, BUILD_ROWS = 6, BUILD_CELLS = BUILD_COLS*BUILD_ROWS;
+let buildState = new Array(BUILD_CELLS).fill(null);
+let selectedBuildBlock = null;
+
+let saveTimer=null;
+function queueSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    if(!currentUser) return;
+    await sb.from('progress').update({ xp: state.xp, level: state.level, inventory: state.inventory, build: buildState, updated_at: new Date().toISOString() }).eq('user_id', currentUser.id);
+  }, 500);
+}
+
+function removeBlock(type, qty){
+  state.inventory[type] = Math.max(0, (state.inventory[type]||0) - qty);
+  renderStats();
+}
+
+function addXP(amount){
+  state.xp += amount;
+  const newLevel = Math.floor(state.xp/100)+1;
+  const leveledUp = newLevel > state.level;
+  state.level = newLevel;
+  renderStats();
+  return leveledUp;
+}
+function addBlock(type, qty){
+  state.inventory[type] = (state.inventory[type]||0) + qty;
+  renderStats();
+}
+function renderStats(){
+  document.getElementById('levelNum').textContent = state.level;
+  document.getElementById('xpNum').textContent = state.xp;
+  const into = state.xp - xpForLevel(state.level);
+  document.getElementById('xpBarFill').style.width = Math.min(100,(into/100)*100) + '%';
+  const strip = document.getElementById('invStrip');
+  strip.innerHTML = '';
+  Object.keys(BLOCK_META).forEach(key=>{
+    const count = state.inventory[key]||0;
+    if(count>0){
+      const chip = document.createElement('div');
+      chip.className='inv-chip';
+      chip.innerHTML = `${cubeHTML(key)}${count}`;
+      strip.appendChild(chip);
+    }
+  });
+  queueSave();
+}
+function toast(msg){
+  const t = document.getElementById('rewardToast');
+  t.innerHTML = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+function grantReward(tier){
+  const pools = {
+    1: [['dirt',0.55],['stone',0.35],['coal',0.10]],
+    2: [['stone',0.35],['coal',0.35],['iron',0.25],['gold',0.05]],
+    3: [['iron',0.30],['gold',0.35],['diamond',0.20],['emerald',0.15]]
+  };
+  const pool = pools[tier]||pools[1];
+  let r = Math.random(), acc=0, chosen=pool[0][0];
+  for(const [type,p] of pool){ acc+=p; if(r<=acc){chosen=type;break;} }
+  const xpGain = 5 + tier*4;
+  addBlock(chosen,1);
+  const leveledUp = addXP(xpGain);
+  const meta = BLOCK_META[chosen];
+  toast(`${cubeHTML(chosen)} +1 ${meta.label} &nbsp; +${xpGain} XP${leveledUp ? ' — LEVEL UP!' : ''}`);
+}
+
+/* ================= Screen switching ================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function goHub(){ showScreen('screen-hub'); }
+function showSummary(title, text, blocksEarnedObj){
+  document.getElementById('summaryTitle').textContent = title;
+  document.getElementById('summaryText').textContent = text;
+  const wrap = document.getElementById('summaryBlocks');
+  wrap.innerHTML='';
+  Object.keys(blocksEarnedObj).forEach(key=>{
+    const n = blocksEarnedObj[key];
+    if(n>0){
+      const chip = document.createElement('div');
+      chip.className='chip';
+      chip.innerHTML = `${cubeHTML(key)}<span>${n} ${BLOCK_META[key].label}</span>`;
+      wrap.appendChild(chip);
+    }
+  });
+  showScreen('screen-summary');
+}
+
+/* ================= MathCraft ================= */
+let mathState = { op:'mul', range:12, qIndex:0, total:8, streak:0, earned:{} };
+function genMathQuestion(){
+  const op = mathState.op, range = mathState.range;
+  let a,b,answer,text;
+  if(op==='mul'){ a=Math.floor(Math.random()*11)+2; b=Math.floor(Math.random()*11)+2; answer=a*b; text=`${a} × ${b}`; }
+  else if(op==='div'){ b=Math.floor(Math.random()*11)+2; answer=Math.floor(Math.random()*11)+2; a=b*answer; text=`${a} ÷ ${b}`; }
+  else if(op==='add'){ a=Math.floor(Math.random()*range)+1; b=Math.floor(Math.random()*range)+1; answer=a+b; text=`${a} + ${b}`; }
+  else { a=Math.floor(Math.random()*range)+1; b=Math.floor(Math.random()*(a+1)); answer=a-b; text=`${a} − ${b}`; }
+  return {text, answer};
+}
+function startMath(){
+  mathState.op = document.getElementById('mathOp').value;
+  mathState.range = parseInt(document.getElementById('mathRange').value,10);
+  mathState.qIndex=0; mathState.streak=0; mathState.earned={};
+  showScreen('screen-math'); nextMathQuestion();
+}
+function nextMathQuestion(){
+  if(mathState.qIndex >= mathState.total){ showSummary('Shaft complete!', `You mined through ${mathState.total} problems.`, mathState.earned); return; }
+  mathState.qIndex++;
+  document.getElementById('mathProgress').textContent = `Question ${mathState.qIndex} of ${mathState.total}`;
+  document.getElementById('mathStreak').textContent = mathState.streak>=2 ? `🔥 Streak: ${mathState.streak}` : '';
+  const q = genMathQuestion(); mathState.current = q;
+  document.getElementById('mathQuestion').textContent = q.text;
+  const options = shuffleOptions(q.answer);
+  const grid = document.getElementById('mathOptions'); grid.innerHTML='';
+  options.forEach(opt=>{
+    const btn = document.createElement('button'); btn.className='opt-block'; btn.textContent=opt;
+    btn.onclick = ()=>answerMath(opt, btn); grid.appendChild(btn);
+  });
+}
+function shuffleOptions(answer){
+  const set = new Set([answer]);
+  while(set.size<4){ const d=Math.floor(Math.random()*9)-4; const c=answer+d; if(c>=0 && c!==answer) set.add(c); }
+  return Array.from(set).sort(()=>Math.random()-0.5);
+}
+function answerMath(opt, btn){
+  const correct = opt === mathState.current.answer;
+  if(correct){
+    btn.classList.add('correct-flash'); mathState.streak++;
+    const tier = mathState.streak>=3 ? 3 : (mathState.streak>=1 ? 2 : 1);
+    const before = JSON.stringify(state.inventory);
+    grantReward(tier); trackEarned(mathState.earned, before);
+    setTimeout(nextMathQuestion, 500);
+  } else {
+    btn.classList.add('wrong-flash'); mathState.streak=0;
+    setTimeout(()=>btn.classList.remove('wrong-flash'), 350);
+  }
+}
+function trackEarned(earnedObj, beforeSnapshotJSON){
+  const before = JSON.parse(beforeSnapshotJSON);
+  Object.keys(state.inventory).forEach(k=>{
+    const diff = (state.inventory[k]||0) - (before[k]||0);
+    if(diff>0) earnedObj[k] = (earnedObj[k]||0) + diff;
+  });
+}
+
+/* ================= Word Miner ================= */
+const WORD_LIST = [
+  {word:'because', clue:'Used to give a reason'}, {word:'different', clue:'Not the same'},
+  {word:'important', clue:'Something that matters a lot'}, {word:'favourite', clue:'The one you like best'},
+  {word:'together', clue:'With each other'}, {word:'remember', clue:'To keep in your memory'},
+  {word:'probably', clue:'Likely to happen'}, {word:'actually', clue:'In real fact'},
+  {word:'morning', clue:'Start of the day'}, {word:'afternoon', clue:'After midday'},
+  {word:'tomorrow', clue:'The day after today'}, {word:'yesterday', clue:'The day before today'},
+  {word:'everyone', clue:'All the people'}, {word:'something', clue:'An unspecified thing'},
+  {word:'another', clue:'One more, or a different one'}, {word:'straight', clue:'Not bent or curved'},
+  {word:'thought', clue:'Past tense of think'}, {word:'through', clue:'From one side to the other'},
+  {word:'weight', clue:'How heavy something is'}, {word:'height', clue:'How tall something is'}
+];
+let wordState = { queue:[], index:0, total:6, attempt:[], current:null, earned:{} };
+function shuffleArray(arr){ return arr.slice().sort(()=>Math.random()-0.5); }
+function startWord(){
+  wordState.queue = shuffleArray(WORD_LIST).slice(0, wordState.total);
+  wordState.index=0; wordState.earned={};
+  showScreen('screen-word'); nextWordQuestion();
+}
+function scrambleWord(word){
+  let letters = word.split(''); let scrambled;
+  do { scrambled = shuffleArray(letters); } while(scrambled.join('')===word && word.length>1);
+  return scrambled;
+}
+function nextWordQuestion(){
+  if(wordState.index >= wordState.queue.length){ showSummary('Cave cleared!', `You rebuilt ${wordState.queue.length} words.`, wordState.earned); return; }
+  const entry = wordState.queue[wordState.index]; wordState.index++;
+  wordState.current = entry; wordState.attempt=[];
+  document.getElementById('wordProgress').textContent = `Word ${wordState.index} of ${wordState.queue.length}`;
+  document.getElementById('wordClue').textContent = `Clue: ${entry.clue}`;
+  const scrambled = scrambleWord(entry.word);
+  const letterRow = document.getElementById('letterRow'); letterRow.innerHTML='';
+  scrambled.forEach((letter,i)=>{
+    const b = document.createElement('button'); b.className='letter-block'; b.textContent=letter;
+    b.dataset.used='0'; b.dataset.idx=i; b.onclick = ()=>pickLetter(b, letter);
+    letterRow.appendChild(b);
+  });
+  renderAnswerRow(entry.word.length);
+}
+function renderAnswerRow(len){
+  const row = document.getElementById('answerRow'); row.innerHTML='';
+  for(let i=0;i<len;i++){ const slot=document.createElement('div'); slot.className='answer-slot'; slot.textContent=wordState.attempt[i]||''; row.appendChild(slot); }
+}
+function pickLetter(btn, letter){
+  if(btn.dataset.used==='1') return;
+  btn.dataset.used='1'; btn.classList.add('used');
+  wordState.attempt.push(letter);
+  renderAnswerRow(wordState.current.word.length);
+  if(wordState.attempt.length === wordState.current.word.length) checkWordAttempt();
+}
+function clearWordAttempt(){
+  wordState.attempt=[];
+  document.querySelectorAll('#letterRow .letter-block').forEach(b=>{ b.dataset.used='0'; b.classList.remove('used'); });
+  renderAnswerRow(wordState.current.word.length);
+}
+function skipWord(){ nextWordQuestion(); }
+function checkWordAttempt(){
+  const guess = wordState.attempt.join('');
+  const correct = guess === wordState.current.word;
+  if(correct){
+    const before = JSON.stringify(state.inventory);
+    grantReward(2); trackEarned(wordState.earned, before);
+    setTimeout(nextWordQuestion, 700);
+  } else { setTimeout(clearWordAttempt, 600); }
+}
+
+/* ================= Villager Trading Post ================= */
+const TRIVIA_LIST = [
+  {q:'How many legs does a spider have?', options:['6','8','10','4'], answer:1},
+  {q:'What planet is known as the Red Planet?', options:['Venus','Mars','Jupiter','Saturn'], answer:1},
+  {q:'What is the largest ocean on Earth?', options:['Atlantic','Indian','Arctic','Pacific'], answer:3},
+  {q:'How many days are in a leap year?', options:['364','365','366','367'], answer:2},
+  {q:'What do bees collect from flowers?', options:['Nectar','Sap','Water','Seeds'], answer:0},
+  {q:'What is the tallest mountain in the world?', options:['K2','Everest','Kosciuszko','Kilimanjaro'], answer:1},
+  {q:'How many continents are there?', options:['5','6','7','8'], answer:2},
+  {q:'What gas do plants breathe in to make food?', options:['Oxygen','Nitrogen','Carbon dioxide','Helium'], answer:2},
+  {q:'What is the smallest country in the world?', options:['Monaco','Vatican City','Malta','Fiji'], answer:1},
+  {q:'How many bones are in the adult human body?', options:['106','206','306','406'], answer:1},
+  {q:'What is the closest star to Earth?', options:['The Sun','Proxima Centauri','Sirius','Polaris'], answer:0},
+  {q:'Which animal is the fastest on land?', options:['Lion','Cheetah','Horse','Ostrich'], answer:1},
+  {q:'What do you call a baby kangaroo?', options:['Cub','Joey','Kit','Calf'], answer:1},
+  {q:'What is the capital of Australia?', options:['Sydney','Melbourne','Canberra','Perth'], answer:2},
+  {q:'How many colours are in a rainbow?', options:['5','6','7','8'], answer:2},
+  {q:'What part of a plant absorbs water?', options:['Leaves','Roots','Petals','Stem'], answer:1},
+  {q:'What is water made of?', options:['Oxygen and hydrogen','Oxygen and carbon','Hydrogen and nitrogen','Carbon and nitrogen'], answer:0},
+  {q:'What do you call a group of wolves?', options:['Herd','Flock','Pack','School'], answer:2},
+  {q:'Which sense organ do you see with?', options:['Ears','Eyes','Nose','Skin'], answer:1},
+  {q:'How many minutes are in an hour?', options:['50','60','70','100'], answer:1}
+];
+let triviaState = { queue:[], index:0, total:8, streak:0, earned:{} };
+function startTrivia(){
+  triviaState.queue = shuffleArray(TRIVIA_LIST).slice(0, triviaState.total);
+  triviaState.index=0; triviaState.streak=0; triviaState.earned={};
+  showScreen('screen-trivia'); nextTriviaQuestion();
+}
+function nextTriviaQuestion(){
+  if(triviaState.index >= triviaState.queue.length){ showSummary('Trading complete!', `The villager traded with you ${triviaState.queue.length} times.`, triviaState.earned); return; }
+  const entry = triviaState.queue[triviaState.index]; triviaState.index++;
+  triviaState.current = entry;
+  document.getElementById('triviaProgress').textContent = `Question ${triviaState.index} of ${triviaState.queue.length}`;
+  document.getElementById('triviaStreak').textContent = triviaState.streak>=2 ? `🔥 Streak: ${triviaState.streak}` : '';
+  document.getElementById('triviaQuestion').textContent = entry.q;
+  const grid = document.getElementById('triviaOptions'); grid.innerHTML='';
+  entry.options.forEach((optText, idx)=>{
+    const btn = document.createElement('button'); btn.className='opt-block'; btn.style.fontSize='16px'; btn.textContent=optText;
+    btn.onclick = ()=>answerTrivia(idx, btn); grid.appendChild(btn);
+  });
+}
+function answerTrivia(idx, btn){
+  const correct = idx === triviaState.current.answer;
+  if(correct){
+    btn.classList.add('correct-flash'); triviaState.streak++;
+    const tier = triviaState.streak>=3 ? 3 : 2;
+    const before = JSON.stringify(state.inventory);
+    grantReward(tier); trackEarned(triviaState.earned, before);
+    setTimeout(nextTriviaQuestion, 550);
+  } else {
+    btn.classList.add('wrong-flash'); triviaState.streak=0;
+    setTimeout(()=>btn.classList.remove('wrong-flash'), 350);
+  }
+}
+
+/* ================= Mob Defense ================= */
+let defenseState = { index:0, total:8, hearts:5, earned:{}, wallPct:0 };
+function genQuickFact(){
+  const type = Math.random()<0.5 ? 'add' : 'mul';
+  let a,b,answer,text;
+  if(type==='mul'){ a=Math.floor(Math.random()*10)+2; b=Math.floor(Math.random()*10)+2; answer=a*b; text=`${a} × ${b}`; }
+  else { a=Math.floor(Math.random()*40)+1; b=Math.floor(Math.random()*40)+1; answer=a+b; text=`${a} + ${b}`; }
+  return {text, answer};
+}
+function renderHearts(){
+  const wrap = document.getElementById('defenseHearts'); wrap.innerHTML='';
+  for(let i=0;i<5;i++){ const s=document.createElement('span'); s.className='heart'+(i>=defenseState.hearts?' lost':''); s.textContent='♥'; wrap.appendChild(s); }
+}
+function startDefense(){
+  defenseState.index=0; defenseState.hearts=5; defenseState.earned={}; defenseState.wallPct=0;
+  document.getElementById('defenseWall').style.width='0%';
+  showScreen('screen-defense'); renderHearts(); nextDefenseQuestion();
+}
+function nextDefenseQuestion(){
+  if(defenseState.index >= defenseState.total || defenseState.hearts<=0){
+    const title = defenseState.hearts<=0 ? 'Base held on!' : 'Night survived!';
+    showSummary(title, `You answered ${defenseState.index} quick-fire questions and kept your base standing.`, defenseState.earned);
+    return;
+  }
+  defenseState.index++;
+  document.getElementById('defenseProgress').textContent = `Wave question ${defenseState.index} of ${defenseState.total}`;
+  const q = genQuickFact(); defenseState.current = q;
+  document.getElementById('defenseQuestion').textContent = q.text;
+  const mob = document.getElementById('defenseMob');
+  mob.style.display='block'; mob.style.transition='none'; mob.style.right='20px';
+  void mob.offsetWidth;
+  mob.style.transition='right 6s linear'; mob.style.right='calc(100% - 50px)';
+  clearTimeout(defenseState.timer);
+  defenseState.timer = setTimeout(()=>onDefenseTimeout(), 6000);
+  const options = shuffleOptions(q.answer);
+  const grid = document.getElementById('defenseOptions'); grid.innerHTML='';
+  options.forEach(opt=>{
+    const btn = document.createElement('button'); btn.className='opt-block'; btn.textContent=opt;
+    btn.onclick = ()=>answerDefense(opt, btn); grid.appendChild(btn);
+  });
+}
+function onDefenseTimeout(){
+  defenseState.hearts = Math.max(0, defenseState.hearts-1);
+  renderHearts();
+  document.getElementById('defenseMob').style.display='none';
+  setTimeout(nextDefenseQuestion, 400);
+}
+function answerDefense(opt, btn){
+  clearTimeout(defenseState.timer);
+  const correct = opt === defenseState.current.answer;
+  document.getElementById('defenseMob').style.display='none';
+  if(correct){
+    btn.classList.add('correct-flash');
+    defenseState.wallPct = Math.min(100, defenseState.wallPct + (100/defenseState.total));
+    document.getElementById('defenseWall').style.width = defenseState.wallPct + '%';
+    const before = JSON.stringify(state.inventory);
+    grantReward(2); trackEarned(defenseState.earned, before);
+  } else {
+    btn.classList.add('wrong-flash');
+    defenseState.hearts = Math.max(0, defenseState.hearts-1);
+    renderHearts();
+  }
+  setTimeout(nextDefenseQuestion, 500);
+}
+
+/* ================= Build Yard ================= */
+function startBuild(){
+  selectedBuildBlock = null;
+  showScreen('screen-build');
+  renderBuildPalette();
+  renderBuildGrid();
+}
+function renderBuildPalette(){
+  const wrap = document.getElementById('buildPalette');
+  wrap.innerHTML='';
+  Object.keys(BLOCK_META).forEach(key=>{
+    const count = state.inventory[key]||0;
+    const btn = document.createElement('button');
+    btn.className = 'palette-chip' + (selectedBuildBlock===key ? ' selected' : '');
+    btn.disabled = count<=0;
+    btn.innerHTML = `${cubeHTML(key)} ${BLOCK_META[key].label} <span>(${count})</span>`;
+    btn.onclick = ()=>{ selectedBuildBlock = key; renderBuildPalette(); };
+    wrap.appendChild(btn);
+  });
+}
+function renderBuildGrid(){
+  const grid = document.getElementById('buildGrid');
+  grid.innerHTML='';
+  for(let i=0;i<BUILD_CELLS;i++){
+    const cell = document.createElement('button');
+    const occupant = buildState[i];
+    cell.className = 'build-cell' + (occupant ? ` filled ${BLOCK_META[occupant].cls}` : '');
+    cell.onclick = ()=>toggleBuildCell(i);
+    grid.appendChild(cell);
+  }
+}
+function toggleBuildCell(i){
+  const occupant = buildState[i];
+  if(occupant){
+    buildState[i] = null;
+    addBlock(occupant, 1);
+  } else if(selectedBuildBlock && (state.inventory[selectedBuildBlock]||0) > 0){
+    buildState[i] = selectedBuildBlock;
+    removeBlock(selectedBuildBlock, 1);
+  } else {
+    return;
+  }
+  renderBuildPalette();
+  renderBuildGrid();
+  queueSave();
+}
+function clearBuild(){
+  if(!confirm('Return every placed block to your inventory?')) return;
+  buildState.forEach(type=>{ if(type) addBlock(type,1); });
+  buildState = new Array(BUILD_CELLS).fill(null);
+  renderBuildPalette();
+  renderBuildGrid();
+  queueSave();
+}
+
+/* ================= Init ================= */
+document.getElementById('rosterInput').value = DEFAULT_ROSTER.join('\n');
+loadClassAndNames();
+</script>
+</body>
+</html>
