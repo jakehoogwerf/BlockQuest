@@ -209,8 +209,15 @@
   .name-tile.selected{background:var(--gold);}
   .initials-badge{
     width:40px;height:40px;display:flex;align-items:center;justify-content:center;
-    color:#fff;font-family:'Press Start 2P';font-size:12px;border:2px solid var(--border-dark);
+    color:#fff;font-family:'Press Start 2P';font-size:12px;border:2px solid var(--border-dark);flex:none;
   }
+  .initials-badge.b-dirt{background:#7A4E2D;}
+  .initials-badge.b-stone{background:#8A8A82;}
+  .initials-badge.b-coal{background:#3c3c38;}
+  .initials-badge.b-iron{background:#c9b491;color:var(--ink);}
+  .initials-badge.b-gold{background:var(--gold);color:var(--ink);}
+  .initials-badge.b-diamond{background:var(--diamond);color:var(--ink);}
+  .initials-badge.b-emerald{background:var(--emerald);}
 
   /* ============ Generic game chrome ============ */
   .game-wrap{max-width:760px;margin:0 auto;padding:26px 20px 60px;}
@@ -569,7 +576,7 @@ const BADGE_COLORS = ['b-dirt','b-stone','b-coal','b-iron','b-gold','b-diamond',
 let authState = { classId:null, students:[], selectedStudent:null, mode:null }; // mode: 'signup' | 'login'
 let currentUser = null; // supabase auth user
 
-function syntheticEmail(studentId){ return `${studentId}@blockquest.local`; }
+function syntheticEmail(studentId){ return `${studentId}@blockquest-app.com`; }
 
 function initials(name){
   const parts = name.trim().split(/\s+/);
