@@ -380,6 +380,210 @@
     .inv-strip{max-width:100%;}
     .board th,.board td{padding:7px 6px;font-size:12px;}
   }
+
+  /* ============================================================
+     GAME SCENES — each game gets its own place in the world
+     ============================================================ */
+  .stage{position:relative;overflow:hidden;padding:0;border:4px solid var(--border-dark);}
+  .stage-inner{position:relative;z-index:3;padding:22px 20px 26px;}
+  .scene{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+
+  /* Chunky 3D block buttons, shared by every game */
+  .opt-block{
+    position:relative;border:none;padding:0;background:none;
+    font-size:22px;font-weight:800;color:#fff;
+    text-shadow:2px 2px 0 rgba(0,0,0,0.45);
+    transition:transform .08s;
+  }
+  .opt-block .face{
+    display:block;padding:20px 10px;border:3px solid var(--border-dark);
+    background:var(--stone);
+    box-shadow:inset 0 5px 0 rgba(255,255,255,0.22), inset 0 -6px 0 rgba(0,0,0,0.3);
+  }
+  .opt-block:hover .face{filter:brightness(1.12);}
+  .opt-block:active{transform:translateY(3px);}
+  .opt-block.correct-flash .face{background:var(--emerald)!important;animation:burst .4s;}
+  .opt-block.wrong-flash .face{background:var(--redstone)!important;animation:shake .3s;}
+  @keyframes burst{0%{transform:scale(1);}45%{transform:scale(1.09);}100%{transform:scale(1);}}
+
+  .scene-title{
+    position:relative;z-index:3;display:flex;align-items:center;gap:10px;
+    padding:11px 16px;border-bottom:4px solid var(--border-dark);
+    font-size:12px;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,0.5);
+  }
+  .scene-title .spacer{margin-left:auto;font-family:'Baloo 2';font-size:13px;font-weight:700;text-shadow:none;}
+
+  /* ---------- Plaque: the question sits on a carved slab ---------- */
+  .plaque{
+    position:relative;z-index:3;max-width:420px;margin:0 auto 16px;
+    border:4px solid var(--border-dark);padding:14px 18px;text-align:center;
+    background:linear-gradient(180deg,#9a9a92,#6f6f68);
+    box-shadow:inset 0 5px 0 rgba(255,255,255,0.22), inset 0 -7px 0 rgba(0,0,0,0.28), 5px 5px 0 rgba(0,0,0,0.25);
+  }
+  .plaque .qlabel{font-size:11px;color:#efe9d8;opacity:.85;margin-bottom:5px;text-shadow:1px 1px 0 rgba(0,0,0,0.5);}
+  .plaque .qtext{font-size:34px;font-weight:800;color:#fff;text-shadow:3px 3px 0 rgba(0,0,0,0.45);}
+  .plaque.wood{background:linear-gradient(180deg,#a8703f,#7a4e2d);}
+  .plaque.rune{background:linear-gradient(180deg,#5a4a86,#3a2f5e);}
+  .plaque.iron{background:linear-gradient(180deg,#d8c8ab,#a08f72);}
+  .plaque.iron .qtext{color:#2b2418;text-shadow:2px 2px 0 rgba(255,255,255,0.35);}
+  .plaque.iron .qlabel{color:#4a4030;}
+
+  /* ---------- MathCraft Mines: underground ---------- */
+  .stage.mine{background:linear-gradient(180deg,#4a443e 0%,#2e2a26 60%,#211e1b 100%);}
+  .stage.mine .scene-title{background:linear-gradient(180deg,#6b6259,#443e37);}
+  .mine-ceiling{
+    position:absolute;top:0;left:0;right:0;height:26px;
+    background:linear-gradient(180deg,#5c554d,#3a352f);
+    border-bottom:3px solid #1a1714;
+  }
+  .stalac{position:absolute;top:26px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:18px solid #3a352f;}
+  .mine-floor{
+    position:absolute;bottom:0;left:0;right:0;height:38px;
+    background:linear-gradient(180deg,#3a352f,#26221e);
+    border-top:3px solid #1a1714;
+  }
+  .torch{position:absolute;width:8px;height:26px;background:#7a4e2d;border:2px solid #1a1714;}
+  .torch::after{
+    content:"";position:absolute;top:-10px;left:-3px;width:12px;height:12px;
+    background:radial-gradient(circle,#fff3b0,#e89523 65%,transparent 72%);
+    animation:flicker 1.6s ease-in-out infinite;
+  }
+  .torch-glow{
+    position:absolute;width:150px;height:150px;border-radius:50%;
+    background:radial-gradient(circle,rgba(232,170,60,0.22),transparent 68%);
+    animation:flicker 2.3s ease-in-out infinite;
+  }
+  @keyframes flicker{0%,100%{opacity:.85;transform:scale(1);}45%{opacity:1;transform:scale(1.1);}70%{opacity:.78;transform:scale(.96);}}
+  .ore-spot{position:absolute;width:26px;height:26px;border:2px solid rgba(0,0,0,0.45);opacity:.5;}
+
+  /* Mine answers look like ore embedded in stone */
+  .mine .opt-block .face{
+    background:
+      radial-gradient(circle at 22% 30%, rgba(255,255,255,0.16) 5px, transparent 6px),
+      radial-gradient(circle at 76% 68%, rgba(0,0,0,0.22) 6px, transparent 7px),
+      linear-gradient(180deg,#8d8d84,#66665f);
+  }
+  .depth-gauge{
+    position:relative;z-index:3;display:flex;align-items:center;gap:9px;
+    max-width:420px;margin:0 auto 12px;font-size:11.5px;color:#d8cfbd;
+  }
+  .depth-gauge .rail{flex:1;height:11px;background:#221f1c;border:2px solid #100e0c;}
+  .depth-gauge .rail span{display:block;height:100%;background:linear-gradient(90deg,#8d8d84,#E8B923);transition:width .35s;}
+
+  /* ---------- Word Miner: crystal cave ---------- */
+  .stage.cave{background:linear-gradient(180deg,#2b2450 0%,#1a1636 55%,#120f28 100%);}
+  .stage.cave .scene-title{background:linear-gradient(180deg,#4a3f7a,#2b2450);}
+  .crystal{position:absolute;bottom:0;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;opacity:.85;}
+  .crystal.c-lapis{border-bottom:54px solid #2E5FA3;}
+  .crystal.c-amethyst{border-bottom:70px solid #8E5FBF;}
+  .crystal.c-diamond{border-bottom:44px solid #4FD3C4;}
+  .crystal-glow{position:absolute;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle,rgba(142,95,191,0.25),transparent 70%);animation:pulse 4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.6;}50%{opacity:1;}}
+  .cave-floor{position:absolute;bottom:0;left:0;right:0;height:30px;background:#0d0b1e;border-top:3px solid #060512;}
+  .cave .word-clue{color:#e8e2ff;font-size:17px;text-shadow:2px 2px 0 rgba(0,0,0,0.5);}
+  .cave .word-meta{color:#a89ecf;}
+  .cave .progress-label{color:#9a90c4;}
+  .letter-block{
+    background:linear-gradient(180deg,#8a6a45,#5f4630);
+    box-shadow:inset 0 4px 0 rgba(255,255,255,0.2), inset 0 -5px 0 rgba(0,0,0,0.3);
+    text-shadow:2px 2px 0 rgba(0,0,0,0.45);transition:transform .08s;
+  }
+  .letter-block:hover{filter:brightness(1.15);}
+  .letter-block:active{transform:translateY(3px);}
+  .answer-slot{
+    background:rgba(255,255,255,0.07);border:3px dashed rgba(200,190,255,0.45);color:#fff;
+    text-shadow:2px 2px 0 rgba(0,0,0,0.5);
+  }
+  .answer-slot.good{border:3px solid #6be08b;background:rgba(107,224,139,0.22);}
+  .answer-slot.bad{border:3px solid #e2705f;background:rgba(226,112,95,0.22);}
+
+  /* ---------- Villager Trading Post: market at dusk ---------- */
+  .stage.market{background:linear-gradient(180deg,#6b5a92 0%,#c98a5e 55%,#8c5f3a 100%);}
+  .stage.market .scene-title{background:linear-gradient(180deg,#8a5a34,#5a3a20);}
+  .awning{
+    position:absolute;top:0;left:0;right:0;height:30px;
+    background:repeating-linear-gradient(90deg,#c1392b 0 26px,#f0e6d2 26px 52px);
+    border-bottom:3px solid var(--border-dark);
+  }
+  .awning-edge{position:absolute;top:30px;left:0;right:0;height:12px;
+    background:repeating-linear-gradient(90deg,#c1392b 0 26px,#f0e6d2 26px 52px);
+    clip-path:polygon(0 0,100% 0,100% 40%,96% 100%,92% 40%,88% 100%,84% 40%,80% 100%,76% 40%,72% 100%,68% 40%,64% 100%,60% 40%,56% 100%,52% 40%,48% 100%,44% 40%,40% 100%,36% 40%,32% 100%,28% 40%,24% 100%,20% 40%,16% 100%,12% 40%,8% 100%,4% 40%,0 100%);}
+  .rooftop{position:absolute;bottom:52px;width:0;height:0;border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:22px solid #4a3a2a;opacity:.55;}
+  .counter{
+    position:absolute;bottom:0;left:0;right:0;height:52px;
+    background:linear-gradient(180deg,#a8703f,#6b4526);
+    border-top:4px solid var(--border-dark);
+    box-shadow:inset 0 6px 0 rgba(255,255,255,0.16);
+  }
+  .trader{position:absolute;bottom:40px;right:26px;width:74px;height:92px;z-index:2;
+    filter:drop-shadow(3px 3px 0 rgba(0,0,0,0.35));transition:transform .2s;}
+  .trader.nod{animation:nod .5s;}
+  @keyframes nod{0%,100%{transform:translateY(0);}50%{transform:translateY(7px);}}
+  .market .opt-block .face{
+    background:linear-gradient(180deg,#b8813f,#7a4e2d);
+    font-size:17px;
+  }
+  .market .progress-label{color:#3a2a1a;font-weight:700;}
+  .market .streak-note{color:#2e4a1f;}
+
+  /* ---------- Mob Defense: night raid ---------- */
+  .stage.night{background:linear-gradient(180deg,#0b1026 0%,#16203f 60%,#1d2a4a 100%);}
+  .stage.night .scene-title{background:linear-gradient(180deg,#26304f,#141a2e);}
+  .moon{position:absolute;top:18px;right:40px;width:38px;height:38px;border-radius:50%;
+    background:radial-gradient(circle at 38% 38%,#fff,#ccd6ec);box-shadow:0 0 22px rgba(200,215,255,0.45);}
+  .starfield{position:absolute;inset:0;opacity:.85;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),
+      radial-gradient(1.5px 1.5px at 28% 42%,#fff,transparent),
+      radial-gradient(1.5px 1.5px at 44% 12%,#fff,transparent),
+      radial-gradient(1.5px 1.5px at 61% 33%,#fff,transparent),
+      radial-gradient(1.5px 1.5px at 73% 9%,#fff,transparent),
+      radial-gradient(1.5px 1.5px at 88% 30%,#fff,transparent),
+      radial-gradient(1.5px 1.5px at 18% 56%,#fff,transparent),
+      radial-gradient(1.5px 1.5px at 52% 52%,#fff,transparent);}
+  .treeline{position:absolute;bottom:34px;left:0;right:0;height:38px;background:#0a1220;
+    clip-path:polygon(0 100%,0 60%,4% 30%,8% 60%,13% 22%,18% 60%,23% 38%,28% 60%,34% 26%,39% 60%,45% 34%,50% 60%,56% 24%,61% 60%,67% 40%,72% 60%,78% 28%,83% 60%,89% 36%,94% 60%,100% 30%,100% 100%);}
+  .ground-night{position:absolute;bottom:0;left:0;right:0;height:34px;background:linear-gradient(180deg,#1b2b1c,#101c11);border-top:3px solid #0a1109;}
+  .night .opt-block .face{background:linear-gradient(180deg,#4a5578,#2b3350);}
+  .night .progress-label{color:#9fb0d8;}
+  .defense-track{background:linear-gradient(180deg,#0e1630,#0a1020);border:3px solid var(--border-dark);}
+  .heart{font-size:22px;filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.6));}
+
+  /* ---------- Build Yard: open plot ---------- */
+  .stage.yard{background:linear-gradient(180deg,#8FD3E8 0%,#bfe6f2 60%,#cdeaf5 100%);}
+  .stage.yard .scene-title{background:linear-gradient(180deg,#5B8C3E,#2E4A1F);}
+  .yard-sun{position:absolute;top:16px;left:34px;width:36px;height:36px;border-radius:50%;
+    background:radial-gradient(circle at 36% 36%,#fff6c9,var(--gold));box-shadow:0 0 0 8px rgba(232,185,35,0.16);}
+  .yard-cloud{position:absolute;background:#fff;opacity:.85;}
+  .yard-cloud::before,.yard-cloud::after{content:"";position:absolute;background:#fff;}
+  .yc1{width:46px;height:12px;top:30px;left:-60px;animation:drift 50s linear infinite;}
+  .yc1::before{width:18px;height:18px;top:-7px;left:6px;}
+  .yc1::after{width:14px;height:12px;top:-4px;left:25px;}
+  .yard-grass{position:absolute;bottom:0;left:0;right:0;height:42px;
+    background:linear-gradient(180deg,#5B8C3E 0 10px,#7A4E2D 10px);border-top:3px solid #2E4A1F;}
+  .build-grid{background:rgba(255,255,255,0.28);border:4px solid var(--border-dark);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,0.35);}
+
+  /* Progress/streak text readable on dark scenes */
+  .mine .progress-label,.cave .progress-label{color:#cfc6b4;}
+  .mine .streak-note,.cave .streak-note,.night .streak-note{color:#8be09b;}
+  .mine .combo-rail,.cave .combo-rail,.night .combo-rail,.market .combo-rail{
+    background:rgba(0,0,0,0.35);border:2px solid rgba(0,0,0,0.5);}
+  .mine .timer-rail,.night .timer-rail{background:rgba(0,0,0,0.35);border:2px solid rgba(0,0,0,0.5);}
+  .typed-answer{background:linear-gradient(180deg,#9a9a92,#6f6f68);color:#fff;
+    text-shadow:2px 2px 0 rgba(0,0,0,0.45);border:4px solid var(--border-dark);}
+  .numpad button{border:3px solid var(--border-dark);
+    box-shadow:inset 0 4px 0 rgba(255,255,255,0.2), inset 0 -5px 0 rgba(0,0,0,0.28);}
+  .numpad button:active{transform:translateY(3px);}
+  .mine .word-actions .btn-secondary,.cave .word-actions .btn-secondary{background:var(--parchment-2);}
+
+  @media(max-width:640px){
+    .plaque .qtext{font-size:26px;}
+    .trader{width:52px;height:64px;right:10px;}
+    .stage-inner{padding:16px 13px 20px;}
+  }
+
 </style>
 </head>
 <body>
@@ -676,15 +880,39 @@
   <div class="screen" id="screen-math">
     <div class="game-wrap">
       <div class="back-row"><button class="back-btn" onclick="quitToHub()">&laquo; Back</button><h2 class="game-title">MathCraft Mines</h2></div>
-      <div class="stage">
-        <div class="progress-label" id="mathProgress"></div>
-        <div class="combo-rail"><span id="mathCombo" style="width:0%"></span></div>
-        <div class="question-box"><div class="qlabel">Solve to mine</div><div class="qtext" id="mathQuestion">?</div></div>
-        <div class="streak-note" id="mathStreak"></div>
-        <div id="mathChoiceArea"><div class="options-grid" id="mathOptions"></div></div>
-        <div id="mathTypeArea" style="display:none;">
-          <div class="typed-answer" id="typedAnswer"></div>
-          <div class="numpad" id="mathNumpad"></div>
+      <div class="stage mine">
+        <div class="scene">
+          <div class="mine-ceiling"></div>
+          <div class="stalac" style="left:12%"></div>
+          <div class="stalac" style="left:34%;border-top-width:12px;"></div>
+          <div class="stalac" style="left:63%;border-top-width:22px;"></div>
+          <div class="stalac" style="left:86%"></div>
+          <div class="torch-glow" style="top:24px;left:-30px;"></div>
+          <div class="torch-glow" style="top:120px;right:-40px;"></div>
+          <div class="torch" style="top:52px;left:18px;"></div>
+          <div class="torch" style="top:150px;right:22px;"></div>
+          <div class="ore-spot b-gold" style="top:96px;left:8%;background:#E8B923;"></div>
+          <div class="ore-spot" style="top:176px;left:90%;background:#4FD3C4;"></div>
+          <div class="ore-spot" style="top:238px;left:14%;background:#3c3c38;"></div>
+          <div class="mine-floor"></div>
+        </div>
+        <div class="scene-title pixel">MATHCRAFT MINES<span class="spacer" id="mathProgress"></span></div>
+        <div class="stage-inner">
+          <div class="depth-gauge">
+            <span>Depth</span>
+            <span class="rail"><span id="mathDepth" style="width:0%"></span></span>
+          </div>
+          <div class="combo-rail"><span id="mathCombo" style="width:0%"></span></div>
+          <div class="plaque">
+            <div class="qlabel">Solve to swing your pickaxe</div>
+            <div class="qtext" id="mathQuestion">?</div>
+          </div>
+          <div class="streak-note" id="mathStreak"></div>
+          <div id="mathChoiceArea"><div class="options-grid" id="mathOptions"></div></div>
+          <div id="mathTypeArea" style="display:none;">
+            <div class="typed-answer" id="typedAnswer"></div>
+            <div class="numpad" id="mathNumpad"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -694,8 +922,20 @@
   <div class="screen" id="screen-word">
     <div class="game-wrap">
       <div class="back-row"><button class="back-btn" onclick="quitToHub()">&laquo; Back</button><h2 class="game-title">Word Miner</h2></div>
-      <div class="stage">
-        <div class="progress-label" id="wordProgress"></div>
+      <div class="stage cave">
+        <div class="scene">
+          <div class="crystal-glow" style="bottom:-20px;left:4%;"></div>
+          <div class="crystal-glow" style="bottom:-30px;right:8%;background:radial-gradient(circle,rgba(79,211,196,0.22),transparent 70%);"></div>
+          <div class="crystal c-lapis" style="left:5%;"></div>
+          <div class="crystal c-amethyst" style="left:12%;"></div>
+          <div class="crystal c-diamond" style="left:20%;"></div>
+          <div class="crystal c-amethyst" style="right:6%;"></div>
+          <div class="crystal c-lapis" style="right:14%;"></div>
+          <div class="crystal c-diamond" style="right:21%;"></div>
+          <div class="cave-floor"></div>
+        </div>
+        <div class="scene-title pixel">WORD MINER<span class="spacer" id="wordProgress"></span></div>
+        <div class="stage-inner">
         <div class="word-clue" id="wordClue"></div>
         <div class="word-meta" id="wordMeta"></div>
         <div class="answer-row" id="answerRow"></div>
@@ -706,6 +946,7 @@
           <button class="btn-secondary" onclick="useHint()" id="hintBtn">Hint</button>
           <button class="btn-secondary" onclick="skipWord()">Skip</button>
         </div>
+        </div>
       </div>
     </div>
   </div>
@@ -714,12 +955,25 @@
   <div class="screen" id="screen-trivia">
     <div class="game-wrap">
       <div class="back-row"><button class="back-btn" onclick="quitToHub()">&laquo; Back</button><h2 class="game-title">Villager Trading Post</h2></div>
-      <div class="stage">
-        <div class="progress-label" id="triviaProgress"></div>
-        <div class="combo-rail"><span id="triviaCombo" style="width:0%"></span></div>
-        <div class="question-box"><div class="qlabel">The villager asks</div><div class="qtext" id="triviaQuestion" style="font-size:22px;">?</div></div>
-        <div class="streak-note" id="triviaStreak"></div>
-        <div class="options-grid" id="triviaOptions" style="grid-template-columns:1fr;max-width:540px;"></div>
+      <div class="stage market">
+        <div class="scene">
+          <div class="rooftop" style="left:6%;"></div>
+          <div class="rooftop" style="left:24%;bottom:58px;"></div>
+          <div class="rooftop" style="left:44%;"></div>
+          <div class="counter"></div>
+        </div>
+        <div class="awning"></div><div class="awning-edge"></div>
+        <div class="trader" id="traderFigure"></div>
+        <div class="scene-title pixel" style="margin-top:42px;">TRADING POST<span class="spacer" id="triviaProgress"></span></div>
+        <div class="stage-inner">
+          <div class="combo-rail"><span id="triviaCombo" style="width:0%"></span></div>
+          <div class="plaque wood" style="max-width:560px;">
+            <div class="qlabel">The trader asks</div>
+            <div class="qtext" id="triviaQuestion" style="font-size:21px;line-height:1.35;">?</div>
+          </div>
+          <div class="streak-note" id="triviaStreak"></div>
+          <div class="options-grid" id="triviaOptions" style="grid-template-columns:1fr;max-width:540px;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -728,13 +982,24 @@
   <div class="screen" id="screen-defense">
     <div class="game-wrap">
       <div class="back-row"><button class="back-btn" onclick="quitToHub()">&laquo; Back</button><h2 class="game-title">Mob Defense</h2></div>
-      <div class="stage">
-        <div class="hearts" id="defenseHearts"></div>
-        <div class="defense-track"><div class="wall" id="defenseWall"></div><div class="mob" id="defenseMob" style="display:none;"></div></div>
-        <div class="timer-rail"><span id="defenseTimer" style="width:100%"></span></div>
-        <div class="progress-label" id="defenseProgress"></div>
-        <div class="question-box"><div class="qlabel">Answer before it reaches your wall</div><div class="qtext" id="defenseQuestion">?</div></div>
-        <div class="options-grid" id="defenseOptions"></div>
+      <div class="stage night">
+        <div class="scene">
+          <div class="starfield"></div>
+          <div class="moon"></div>
+          <div class="treeline"></div>
+          <div class="ground-night"></div>
+        </div>
+        <div class="scene-title pixel">MOB DEFENSE<span class="spacer" id="defenseProgress"></span></div>
+        <div class="stage-inner">
+          <div class="hearts" id="defenseHearts"></div>
+          <div class="defense-track"><div class="wall" id="defenseWall"></div><div class="mob" id="defenseMob" style="display:none;"></div></div>
+          <div class="timer-rail"><span id="defenseTimer" style="width:100%"></span></div>
+          <div class="plaque">
+            <div class="qlabel">Answer before it reaches your wall</div>
+            <div class="qtext" id="defenseQuestion">?</div>
+          </div>
+          <div class="options-grid" id="defenseOptions"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -743,7 +1008,14 @@
   <div class="screen" id="screen-build">
     <div class="game-wrap" style="max-width:900px;">
       <div class="back-row"><button class="back-btn" onclick="goHub()">&laquo; Back</button><h2 class="game-title">Build Yard</h2></div>
-      <div class="stage">
+      <div class="stage yard">
+        <div class="scene">
+          <div class="yard-sun"></div>
+          <div class="yard-cloud yc1"></div>
+          <div class="yard-grass"></div>
+        </div>
+        <div class="scene-title pixel">BUILD YARD<span class="spacer">Place blocks from your bag</span></div>
+        <div class="stage-inner">
         <div class="build-top">
           <div class="blueprint-card">
             <h4 id="bpTitle">Free build</h4>
@@ -759,6 +1031,7 @@
         <div class="build-actions">
           <button class="btn-secondary" onclick="clearBuild()">Take all blocks back</button>
           <button class="btn-primary" onclick="checkBlueprint()" id="bpCheckBtn" style="display:none;">Check my build</button>
+        </div>
         </div>
       </div>
     </div>
@@ -1389,6 +1662,39 @@ async function loadContent(){
 
 function shuffleArray(a){ return a.slice().sort(()=>Math.random()-0.5); }
 
+
+/* Builds a chunky 3D block button used by every game's answers. */
+function optButton(label, onClick, fontSize){
+  const btn = document.createElement('button');
+  btn.className = 'opt-block';
+  const face = document.createElement('span');
+  face.className = 'face';
+  face.textContent = label;
+  if(fontSize) face.style.fontSize = fontSize;
+  btn.appendChild(face);
+  btn.onclick = onClick;
+  return btn;
+}
+
+/* Trader figure for the market scene. */
+const TRADER_SVG = `<svg viewBox="0 0 48 60" width="74" height="92" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+  <rect x="12" y="4" width="24" height="22" fill="#B98A62" stroke="#20180C" stroke-width="1.5"/>
+  <rect x="20" y="14" width="8" height="12" fill="#A0744F" stroke="#20180C" stroke-width="1.2"/>
+  <rect x="15" y="12" width="4" height="4" fill="#20180C"/>
+  <rect x="29" y="12" width="4" height="4" fill="#20180C"/>
+  <rect x="10" y="26" width="28" height="22" fill="#6B4A8C" stroke="#20180C" stroke-width="1.5"/>
+  <rect x="17" y="26" width="14" height="22" fill="#3FA34D" stroke="#20180C" stroke-width="1.2"/>
+  <rect x="4" y="28" width="7" height="17" fill="#B98A62" stroke="#20180C" stroke-width="1.5"/>
+  <rect x="37" y="28" width="7" height="17" fill="#B98A62" stroke="#20180C" stroke-width="1.5"/>
+  <rect x="13" y="48" width="9" height="10" fill="#4A3A6B" stroke="#20180C" stroke-width="1.5"/>
+  <rect x="26" y="48" width="9" height="10" fill="#4A3A6B" stroke="#20180C" stroke-width="1.5"/>
+</svg>`;
+function nodTrader(){
+  const t = document.getElementById('traderFigure');
+  if(!t) return;
+  t.classList.remove('nod'); void t.offsetWidth; t.classList.add('nod');
+}
+
 /* ================= Shared round helpers ================= */
 let lastGame = null;
 function finishRound(opts){
@@ -1520,6 +1826,7 @@ function nextMathQuestion(){
   mathState.qIndex++;
   mathState.typed=''; renderTyped();
   document.getElementById('mathProgress').textContent = `Question ${mathState.qIndex} of ${mathState.total}`;
+  document.getElementById('mathDepth').style.width = (mathState.qIndex/mathState.total*100) + '%';
   document.getElementById('mathStreak').textContent = mathState.streak>=2 ? `Streak: ${mathState.streak}` : '';
   document.getElementById('mathCombo').style.width = Math.min(100, mathState.streak*12.5) + '%';
   const q = genMathQuestion();
@@ -1529,10 +1836,7 @@ function nextMathQuestion(){
     const grid = document.getElementById('mathOptions');
     grid.innerHTML='';
     shuffleOptions(q.answer).forEach(opt=>{
-      const btn=document.createElement('button');
-      btn.className='opt-block'; btn.textContent=opt;
-      btn.onclick=()=>resolveMath(opt===q.answer, btn);
-      grid.appendChild(btn);
+      grid.appendChild(optButton(opt, function(){ resolveMath(opt===q.answer, this); }));
     });
   }
 }
@@ -1688,6 +1992,8 @@ let triviaState = { queue:[], index:0, total:8, streak:0, correct:0, earned:{}, 
 function startTrivia(){
   triviaState.queue = shuffleArray(TRIVIA_LIST).slice(0, Math.min(triviaState.total, TRIVIA_LIST.length));
   triviaState.index=0; triviaState.streak=0; triviaState.correct=0; triviaState.earned={};
+  const tf = document.getElementById('traderFigure');
+  if(tf) tf.innerHTML = TRADER_SVG;
   showScreen('screen-trivia');
   nextTriviaQuestion();
 }
@@ -1714,10 +2020,7 @@ function nextTriviaQuestion(){
   const grid = document.getElementById('triviaOptions');
   grid.innerHTML='';
   shuffleArray([entry.correct].concat(entry.wrong)).forEach(optText=>{
-    const btn=document.createElement('button');
-    btn.className='opt-block'; btn.style.fontSize='16px'; btn.textContent=optText;
-    btn.onclick=()=>answerTrivia(optText===entry.correct, btn);
-    grid.appendChild(btn);
+    grid.appendChild(optButton(optText, function(){ answerTrivia(optText===entry.correct, this); }, '17px'));
   });
 }
 function answerTrivia(correct, btn){
@@ -1726,6 +2029,7 @@ function answerTrivia(correct, btn){
     btn.classList.add('correct-flash');
     SFX.correct();
     triviaState.correct++; triviaState.streak++;
+    nodTrader();
     noteStreak(triviaState.streak);
     bumpQuest('correct',1);
     const before = JSON.stringify(state.inventory);
@@ -1820,10 +2124,7 @@ function nextDefenseQuestion(){
   const grid = document.getElementById('defenseOptions');
   grid.innerHTML='';
   shuffleOptions(q.answer).forEach(opt=>{
-    const btn=document.createElement('button');
-    btn.className='opt-block'; btn.textContent=opt;
-    btn.onclick=()=>answerDefense(opt===q.answer, btn);
-    grid.appendChild(btn);
+    grid.appendChild(optButton(opt, function(){ answerDefense(opt===q.answer, this); }));
   });
 }
 function onDefenseTimeout(){
