@@ -574,15 +574,24 @@ const BADGE_COLORS = ['b-dirt','b-stone','b-coal','b-iron','b-gold','b-diamond',
 
 /* ================= Auth flow state ================= */
 let authState = { classId:null, students:[], selectedStudent:null, mode:null }; // mode: 'signup' | 'login'
-let currentUser = null; // supabase auth user
-
-function syntheticEmail(studentId){ return `${studentId}@blockquest-app.com`; }
+let currentUser = null; // { id: <students.id> }
 
 function initials(name){
   const parts = name.trim().split(/\s+/);
   const first = parts[0][0] || '';
   const last = parts[parts.length-1][0] || '';
   return (first+last).toUpperCase();
+}
+
+function randomSaltHex(){
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function hashPassword(password, saltHex){
+  const enc = new TextEncoder().encode(saltHex + ':' + password);
+  const digest = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 async function loadClassAndNames(){
@@ -612,7 +621,7 @@ async function loadClassAndNames(){
     return;
   }
   authState.classId = classes[0].id;
-  const { data: students } = await sb.from('students').select('id,display_name,auth_user_id').eq('class_id', authState.classId).order('display_name');
+  const { data: students } = await sb.from('students').select('id,display_name,password_hash,password_salt').eq('class_id', authState.classId).order('display_name');
   authState.students = students || [];
   renderNameGrid();
   document.getElementById('loginStep2').style.display='block';
@@ -634,7 +643,7 @@ function selectStudent(student, tileEl){
   document.querySelectorAll('.name-tile').forEach(t=>t.classList.remove('selected'));
   tileEl.classList.add('selected');
   authState.selectedStudent = student;
-  const isNew = !student.auth_user_id;
+  const isNew = !student.password_hash;
   authState.mode = isNew ? 'signup' : 'login';
   document.getElementById('passwordLabel').textContent = isNew ? 'Create a password (first time)' : 'Password';
   document.getElementById('authActionBtn').textContent = isNew ? 'Create account' : 'Log in';
@@ -655,20 +664,19 @@ async function submitAuth(){
   const student = authState.selectedStudent;
   const password = document.getElementById('passwordInput').value;
   if(!password || password.length < 6){ errEl.textContent = 'Password needs at least 6 characters.'; return; }
-  const email = syntheticEmail(student.id);
 
   if(authState.mode === 'signup'){
-    const { data, error } = await sb.auth.signUp({ email, password });
+    const salt = randomSaltHex();
+    const hash = await hashPassword(password, salt);
+    const { error } = await sb.from('students').update({ password_hash: hash, password_salt: salt }).eq('id', student.id);
     if(error){ errEl.textContent = error.message; return; }
-    if(!data.user){ errEl.textContent = 'Could not create account. Ask your teacher to check email confirmation is off.'; return; }
-    await sb.from('students').update({ auth_user_id: data.user.id }).eq('id', student.id);
-    currentUser = data.user;
+    currentUser = { id: student.id };
     await sb.from('progress').insert({ user_id: currentUser.id, xp:0, level:1, inventory:{}, build:[] });
     await enterApp(student.display_name, { xp:0, level:1, inventory:{}, build:[] });
   } else {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if(error){ errEl.textContent = 'Incorrect password.'; return; }
-    currentUser = data.user;
+    const hash = await hashPassword(password, student.password_salt);
+    if(hash !== student.password_hash){ errEl.textContent = 'Incorrect password.'; return; }
+    currentUser = { id: student.id };
     const { data: prog } = await sb.from('progress').select('*').eq('user_id', currentUser.id).maybeSingle();
     const p = prog || { xp:0, level:1, inventory:{}, build:[] };
     if(!prog) await sb.from('progress').insert({ user_id: currentUser.id, xp:0, level:1, inventory:{}, build:[] });
@@ -692,13 +700,13 @@ async function saveRoster(){
   okEl.textContent = `Saved ${names.length} students. You can log in now.`;
 }
 
-async function logout(){
-  await sb.auth.signOut();
+function logout(){
   currentUser = null;
   document.getElementById('appShell').style.display='none';
   document.getElementById('passwordInput').value='';
   deselectStudent();
   showScreen('screen-login');
+  loadClassAndNames();
 }
 
 async function enterApp(name, progress){
